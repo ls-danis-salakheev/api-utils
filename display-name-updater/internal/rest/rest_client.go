@@ -47,7 +47,7 @@ func Update(clients []models.ClientDisplayNameData) {
 
 		response, err := httpClient.Do(request)
 		if response == nil || err != nil || response.StatusCode != http.StatusOK {
-			fmt.Printf("clientData data could not be updated. Accepted response %v\n", response)
+			fmt.Printf("ClientData data could not be updated. Accepted response %v\n", response)
 		}
 		updateStateArr(response, clientData)
 		fmt.Println("=====================================")
