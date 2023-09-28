@@ -9,7 +9,6 @@ import (
 	"github.com/joho/godotenv"
 	"net/http"
 	"os"
-	"strconv"
 )
 
 var httpClient *http.Client
@@ -17,7 +16,7 @@ var httpClient *http.Client
 // env vars
 var nwUrl *string
 var encodedCreds string
-var updateState []string
+var responseState []string
 
 func init() {
 	envErr := godotenv.Load()
@@ -31,7 +30,7 @@ func init() {
 }
 
 func Update(clients []models.ClientDisplayNameData) {
-	updateState = make([]string, len(clients)-1)
+	responseState = make([]string, len(clients)-1)
 	for _, clientData := range clients {
 		jsoned, err := json.Marshal(clientData)
 		if err != nil {
@@ -51,19 +50,20 @@ func Update(clients []models.ClientDisplayNameData) {
 		}
 		updateStateArr(response, clientData)
 		fmt.Println("=====================================")
-		fmt.Printf("Updated clients state: %v\n", updateState)
+		fmt.Printf("Updated clients state: %v\n", responseState)
 		fmt.Println("=====================================")
 	}
 }
 
 func updateStateArr(response *http.Response, clientData models.ClientDisplayNameData) {
-	var code int
+	var message string
 	if response == nil {
-		code = 400
+		message = "response is nil"
 	} else {
-		code = response.StatusCode
+		message = response.Status
 	}
-	updateState = append(updateState, "response code = "+strconv.Itoa(code)+" for client id = "+clientData.ClientId)
+
+	responseState = append(responseState, "response code = "+message+" for client id = "+clientData.ClientId)
 }
 
 func setCredentials(request *http.Request, encodedCreds string) {

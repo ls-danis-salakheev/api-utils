@@ -11,11 +11,7 @@ import (
 )
 
 func main() {
-	envErr := godotenv.Load()
-	if envErr != nil {
-		fmt.Println("Cannot load env vars")
-		return
-	}
+	loadEnvVars()
 	lines, errOccurred := csv.LoadCsvLines(os.Getenv("CLIENTS_FILE_PATH"))
 	if errOccurred {
 		return
@@ -31,5 +27,13 @@ func exit() {
 	select {
 	case <-time.After(30 * time.Second):
 		fmt.Println("Finishing timeout is over. Exiting...")
+	}
+}
+
+func loadEnvVars() {
+	envErr := godotenv.Load()
+	if envErr != nil {
+		fmt.Println("Cannot load env vars")
+		panic(envErr)
 	}
 }
