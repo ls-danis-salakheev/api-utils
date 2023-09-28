@@ -1,12 +1,12 @@
 package rest
 
 import (
-	"bytes"
+	"display-name-updater/internal/mapper"
 	"display-name-updater/internal/models"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/joho/godotenv"
+	"io"
 	"net/http"
 	"os"
 )
@@ -29,21 +29,26 @@ func init() {
 	encodedCreds = prepareCreds()
 }
 
-func Update(clients []models.ClientDisplayNameData) {
+func Update(clients []models.ClientDisplayNameData, fieldName string) {
 	responseState = make([]string, len(clients)-1)
 	for _, clientData := range clients {
-		jsoned, err := json.Marshal(clientData)
-		if err != nil {
-			fmt.Printf("Could not jsoned clientData = %v\n", clientData)
+
+		// fetch existing client data from NW
+		existingNwClient := Get(clientData.ClientId)
+		if existingNwClient == nil {
 			continue
 		}
-
-		buffer := bytes.NewBuffer(jsoned)
-		putUrl := *nwUrl + clientData.ClientId
-		request, err := http.NewRequest(http.MethodPut, putUrl, buffer)
+		// update display name
+		existingNwClient.DisplayName = clientData.AdditionalInformation[fieldName]
+		// body construction
+		buffer := mapper.ToBytes(*existingNwClient, clientData)
+		if buffer == nil {
+			continue
+		}
+		request, err := http.NewRequest(http.MethodPut, *nwUrl+clientData.ClientId, buffer)
 		setCredentials(request, encodedCreds)
 		setHeaders(request)
-
+		// update client data with new display name
 		response, err := httpClient.Do(request)
 		if response == nil || err != nil || response.StatusCode != http.StatusOK {
 			fmt.Printf("ClientData data could not be updated. Accepted response %v\n", response)
@@ -53,6 +58,26 @@ func Update(clients []models.ClientDisplayNameData) {
 		fmt.Printf("Updated clients state: %v\n", responseState)
 		fmt.Println("=====================================")
 	}
+}
+
+func Get(clientId string) *models.NwClient {
+	request, err := http.NewRequest(http.MethodGet, *nwUrl+clientId, nil)
+	setCredentials(request, encodedCreds)
+	setHeaders(request)
+
+	response, err := httpClient.Do(request)
+	if response == nil || err != nil || response.StatusCode != http.StatusOK {
+		fmt.Printf("ClientData data could not be updated. Accepted response %v\n", response)
+		return nil
+	}
+	var reader = &response.Body
+	defer closeReader(reader)
+	body, err := io.ReadAll(*reader)
+	if err != nil {
+		fmt.Println("Could not read response body")
+		return nil
+	}
+	return mapper.MapToNwClient(body, err)
 }
 
 func updateStateArr(response *http.Response, clientData models.ClientDisplayNameData) {
@@ -90,4 +115,11 @@ func checkAndHandlePath(nwUrl string) *string {
 		return &res
 	}
 	return &nwUrl
+}
+
+func closeReader(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		fmt.Println("Could not close response body")
+	}
 }

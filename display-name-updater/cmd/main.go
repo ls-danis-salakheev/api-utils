@@ -17,7 +17,7 @@ func main() {
 		return
 	}
 	clientData := models.CreateClientArr(lines, 1, len(lines))
-	rest.Update(clientData)
+	rest.Update(clientData, "displayName")
 
 	exit()
 }
